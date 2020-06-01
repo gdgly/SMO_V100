@@ -71,7 +71,7 @@ int16	SerialCommsTimer;
 
 // Global variables used in this system
 
-Uint16 OffsetFlag=0; 
+Uint16 OffsetFlag=0;
 _iq offsetA=0;
 _iq offsetB=0;
 _iq offsetC=0;
@@ -80,10 +80,10 @@ _iq K2=_IQ(0.001999);	//Offset filter coefficient K2: T/(T+0.05);
 extern _iq IQsinTable[];
 extern _iq IQcosTable[];
 
-_iq VdTesting = _IQ(0.0);			// Vd reference (pu) 
-_iq VqTesting = _IQ(0.15);			// Vq reference (pu) 
-_iq IdRef = _IQ(0.0);				// Id reference (pu) 
-_iq IqRef = _IQ(0.1);				// Iq reference (pu) 
+_iq VdTesting = _IQ(0.0);			// Vd reference (pu)
+_iq VqTesting = _IQ(0.15);			// Vq reference (pu)
+_iq IdRef = _IQ(0.0);				// Id reference (pu)
+_iq IqRef = _IQ(0.1);				// Iq reference (pu)
 
 #if (BUILDLEVEL<LEVEL3)             // Speed reference (pu)
 _iq  SpeedRef = _IQ(0.15);          // For Open Loop tests
@@ -91,14 +91,14 @@ _iq  SpeedRef = _IQ(0.15);          // For Open Loop tests
 _iq  SpeedRef = _IQ(0.3);           // For Closed Loop tests
 #endif
 
-float32 T = 0.001/ISR_FREQUENCY;    // Samping period (sec), see parameter.h 
+float32 T = 0.001/ISR_FREQUENCY;    // Samping period (sec), see parameter.h
 
 Uint32 IsrTicker = 0;
 Uint16 BackTicker = 0;
 Uint16 lsw=0;
 Uint16 TripFlagDMC=0;				//PWM trip status
 
-// Default ADC initialization 
+// Default ADC initialization
 int ChSel[16]   = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 int	TrigSel[16] = {5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
 int ACQPS[16]   = {8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8};
@@ -106,10 +106,10 @@ int ACQPS[16]   = {8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8};
 int16 DlogCh1 = 0;
 int16 DlogCh2 = 0;
 int16 DlogCh3 = 0;
-int16 DlogCh4 = 0; 
+int16 DlogCh4 = 0;
 
 
-volatile Uint16 EnableFlag = FALSE;
+volatile Uint16 EnableFlag = TRUE;
 Uint16 LockRotorFlag = FALSE;
 
 Uint16 SpeedLoopPrescaler = 10;      // Speed loop prescaler
@@ -121,8 +121,8 @@ SMOPOS smo1 = SMOPOS_DEFAULTS;
 // Instance a sliding-mode position observer constant Module
 SMOPOS_CONST smo1_const = SMOPOS_CONST_DEFAULTS;
 
-// Instance a QEP interface driver 
-QEP qep1 = QEP_DEFAULTS; 
+// Instance a QEP interface driver
+QEP qep1 = QEP_DEFAULTS;
 
 // Instance a few transform objects
 CLARKE clarke1 = CLARKE_DEFAULTS;
@@ -160,21 +160,19 @@ SPEED_MEAS_QEP speed1 = SPEED_MEAS_QEP_DEFAULTS;
 SPEED_ESTIMATION speed3 = SPEED_ESTIMATION_DEFAULTS;
 
 // Create an instance of DATALOG Module
-DLOG_4CH dlog = DLOG_4CH_DEFAULTS;      
-
+DLOG_4CH dlog = DLOG_4CH_DEFAULTS;
 
 
 void main(void)
 {
-	
-	DeviceInit();	// Device Life support & GPIO		
+	DeviceInit();	// Device Life support & GPIO
 
 // Only used if running from FLASH
 // Note that the variable FLASH is defined by the compiler
 #ifdef FLASH
 // Copy time critical code and Flash setup code to RAM
 // The  RamfuncsLoadStart, RamfuncsLoadEnd, and RamfuncsRunStart
-// symbols are created by the linker. Refer to the linker files. 
+// symbols are created by the linker. Refer to the linker files.
 	MemCopy(&RamfuncsLoadStart, &RamfuncsLoadEnd, &RamfuncsRunStart);
 
 // Call Flash Initialization to setup flash waitstates
@@ -183,12 +181,12 @@ void main(void)
 #endif //(FLASH)
 
    // Waiting for enable flag set
-   while (EnableFlag==FALSE) 
-    { 
+   while (EnableFlag==FALSE)
+    {
       BackTicker++;
     }
 
-// Timing sync for background loops 
+// Timing sync for background loops
 // Timer period definitions found in device specific PeripheralHeaderIncludes.h
 	CpuTimer0Regs.PRD.all =  mSec1;		// A tasks
 	CpuTimer1Regs.PRD.all =  mSec5;		// B tasks
@@ -200,18 +198,18 @@ void main(void)
 	B_Task_Ptr = &B1;
 	C_Task_Ptr = &C1;
 
-// Initialize PWM module	    
+// Initialize PWM module
     pwm1.PeriodMax = SYSTEM_FREQUENCY*1000000*T/2;  // Prescaler X1 (T1), ISR period = T x 1
     pwm1.HalfPerMax=pwm1.PeriodMax/2;
     pwm1.Deadband  = 2.0*SYSTEM_FREQUENCY;     	    // 120 counts -> 2.0 usec for TBCLK = SYSCLK/1
     PWM_INIT_MACRO(1,2,3,pwm1)
-    
+
 // Initialize PWMDAC module
 	pwmdac1.PeriodMax=500;		   	// @60Mhz, 1500->20kHz, 1000-> 30kHz, 500->60kHz
 	pwmdac1.HalfPerMax=pwmdac1.PeriodMax/2;
 	PWMDAC_INIT_MACRO(6,pwmdac1) 	// PWM 6A,6B
-	PWMDAC_INIT_MACRO(7,pwmdac1) 	// PWM 7A,7B 
-	
+	PWMDAC_INIT_MACRO(7,pwmdac1) 	// PWM 7A,7B
+
 
 // Initialize DATALOG module
     dlog.iptr1 = &DlogCh1;
@@ -224,15 +222,15 @@ void main(void)
     dlog.init(&dlog);
 
 
-// Initialize ADC for DMC Kit Rev 1.1 	 
+// Initialize ADC for DMC Kit Rev 1.1
 	ChSel[0]=1;		// Dummy meas. avoid 1st sample issue Rev0 Picollo*/
-	ChSel[1]=1;		// ChSelect: ADC A1-> Phase A Current 
-	ChSel[2]=9;		// ChSelect: ADC B1-> Phase B Current 
-	ChSel[3]=3;		// ChSelect: ADC A3-> Phase C Current
-	ChSel[4]=15;	// ChSelect: ADC B7-> Phase A Voltage
-	ChSel[5]=14;	// ChSelect: ADC B6-> Phase B Voltage
-	ChSel[6]=12;	// ChSelect: ADC B4-> Phase C Voltage
-	ChSel[7]=7;		// ChSelect: ADC A7-> DC Bus  Voltage
+	ChSel[1]=0;		// ChSelect: ADC A0-> Phase A Current
+	ChSel[2]=8;		// ChSelect: ADC B0-> Phase B Current
+//	ChSel[3]=3;		// ChSelect: ADC A3-> Phase C Current
+//	ChSel[4]=15;	// ChSelect: ADC B7-> Phase A Voltage
+//	ChSel[5]=14;	// ChSelect: ADC B6-> Phase B Voltage
+//	ChSel[6]=12;	// ChSelect: ADC B4-> Phase C Voltage
+	ChSel[7]=5;		// ChSelect: ADC A5-> DC Bus  Voltage
 
 // Initialize ADC module
 	ADC_MACRO_INIT(ChSel,TrigSel,ACQPS)
@@ -249,10 +247,10 @@ void main(void)
     speed1.K2 = _IQ(1/(1+T*2*PI*5));  // Low-pass cut-off frequency
     speed1.K3 = _IQ(1)-speed1.K2;
     speed1.BaseRpm = 120*(BASE_FREQ/POLES);
-	
+
 // Initialize the SPEED_EST module SMOPOS based speed calculation
     speed3.K1 = _IQ21(1/(BASE_FREQ*T));
-    speed3.K2 = _IQ(1/(1+T*2*PI*5));  // Low-pass cut-off frequency 
+    speed3.K2 = _IQ(1/(1+T*2*PI*5));  // Low-pass cut-off frequency
     speed3.K3 = _IQ(1)-speed3.K2;
     speed3.BaseRpm = 120*(BASE_FREQ/POLES);
 
@@ -269,39 +267,39 @@ void main(void)
 
 // Initialize the SMOPOS module
  	smo1.Fsmopos = _IQ(smo1_const.Fsmopos);
- 	smo1.Gsmopos = _IQ(smo1_const.Gsmopos); 
+ 	smo1.Gsmopos = _IQ(smo1_const.Gsmopos);
  	smo1.Kslide  = _IQ(0.05308703613);
-    smo1.Kslf = _IQ(0.1057073975);   
-    
+    smo1.Kslf = _IQ(0.1057073975);
+
 // Initialize the PI module for Id
     pi_spd.Kp=_IQ(1.5);
 	pi_spd.Ki=_IQ(T*SpeedLoopPrescaler/0.2);
 	pi_spd.Umax =_IQ(0.95);
 	pi_spd.Umin =_IQ(-0.95);
-	
-// Initialize the PI module for Iq	
+
+// Initialize the PI module for Iq
 	pi_id.Kp=_IQ(1.0);
 	pi_id.Ki=_IQ(T/0.04);
 	pi_id.Umax =_IQ(0.4);
 	pi_id.Umin =_IQ(-0.4);
-	
+
 // Initialize the PI module for speed
 	pi_iq.Kp=_IQ(1.0);
 	pi_iq.Ki=_IQ(T/0.04);
 	pi_iq.Umax =_IQ(0.8);
-	pi_iq.Umin =_IQ(-0.8); 			
+	pi_iq.Umin =_IQ(-0.8);
 
 //  Note that the vectorial sum of d-q PI outputs should be less than 1.0 which refers to maximum duty cycle for SVGEN.
 //  Another duty cycle limiting factor is current sense through shunt resistors which depends on hardware/software implementation.
 //  Depending on the application requirements 3,2 or a single shunt resistor can be used for current waveform reconstruction.
-//  The higher number of shunt resistors allow the higher duty cycle operation and better dc bus utilization.   	
-//  The users should adjust the PI saturation levels carefully during open loop tests (i.e pi_id.Umax, pi_iq.Umax and Umins) as in project manuals. 
-//  Violation of this procedure yields distorted current waveforms and unstable closed loop operations which may damage the inverter. 
+//  The higher number of shunt resistors allow the higher duty cycle operation and better dc bus utilization.
+//  The users should adjust the PI saturation levels carefully during open loop tests (i.e pi_id.Umax, pi_iq.Umax and Umins) as in project manuals.
+//  Violation of this procedure yields distorted current waveforms and unstable closed loop operations which may damage the inverter.
 
 //Call HVDMC Protection function
-	HVDMC_Protection();	
+	HVDMC_Protection();
 
-// Reassign ISRs. 
+// Reassign ISRs.
 
 	EALLOW;	// This is needed to write to EALLOW protected registers
 	PieVectTable.EPWM1_INT = &OffsetISR;
@@ -311,7 +309,7 @@ void main(void)
     PieCtrlRegs.PIEIER3.bit.INTx1 = 1;
 
 // Enable CNT_zero interrupt using EPWM1 Time-base
-    EPwm1Regs.ETSEL.bit.INTEN = 1;   // Enable EPWM1INT generation 
+    EPwm1Regs.ETSEL.bit.INTEN = 1;   // Enable EPWM1INT generation
     EPwm1Regs.ETSEL.bit.INTSEL = 1;  // Enable interrupt CNT_zero event
     EPwm1Regs.ETPS.bit.INTPRD = 1;   // Generate interrupt on the 1st event
 	EPwm1Regs.ETCLR.bit.INT = 1;     // Enable more interrupts
@@ -400,7 +398,7 @@ void A1(void) // SPARE (not used)
 {
 	if(EPwm1Regs.TZFLG.bit.OST==0x1)
 	TripFlagDMC=1;      // Trip on DMC (halt, overcurrent and IPM fault trip )
-	
+
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A2
 	A_Task_Ptr = &A2;
@@ -410,7 +408,7 @@ void A1(void) // SPARE (not used)
 //-----------------------------------------------------------------
 void A2(void) // SPARE (not used)
 //-----------------------------------------------------------------
-{	
+{
 
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A3
@@ -444,7 +442,7 @@ void B1(void) // Toggle GPIO-00
 
 	//-----------------
 	//the next time CpuTimer1 'counter' reaches Period value go to B2
-	B_Task_Ptr = &B2;	
+	B_Task_Ptr = &B2;
 	//-----------------
 }
 
@@ -466,7 +464,7 @@ void B3(void) //  SPARE
 
 	//-----------------
 	//the next time CpuTimer1 'counter' reaches Period value go to B1
-	B_Task_Ptr = &B1;	
+	B_Task_Ptr = &B1;
 	//-----------------
 }
 
@@ -478,19 +476,19 @@ void B3(void) //  SPARE
 //--------------------------------- USER ------------------------------------------
 
 //----------------------------------------
-void C1(void) 	// Toggle GPIO-34 
+void C1(void) 	// Toggle GPIO-34
 //----------------------------------------
 {
 
  	if(EPwm1Regs.TZFLG.bit.OST==0x1)			// TripZ for PWMs is low (fault trip)
-	  { TripFlagDMC=1;      				   
-	  }	
-	    
+	  { TripFlagDMC=1;
+	  }
+
 	GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;	   // Turn on/off LD3 on the controlCARD
-	
+
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C2
-	C_Task_Ptr = &C2;	
+	C_Task_Ptr = &C2;
 	//-----------------
 
 }
@@ -502,7 +500,7 @@ void C2(void) //  SPARE
 
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C3
-	C_Task_Ptr = &C3;	
+	C_Task_Ptr = &C3;
 	//-----------------
 }
 
@@ -514,14 +512,14 @@ void C3(void) //  SPARE
 
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C1
-	C_Task_Ptr = &C1;	
+	C_Task_Ptr = &C1;
 	//-----------------
 }
 
 
 
 
-// MainISR 
+// MainISR
 interrupt void MainISR(void)
 {
 
@@ -530,15 +528,15 @@ interrupt void MainISR(void)
 
 // =============================== LEVEL 1 ======================================
 //	  Checks target independent modules, duty cycle waveforms and PWM update
-//	  Keep the motors disconnected at this level	
-// ============================================================================== 
+//	  Keep the motors disconnected at this level
+// ==============================================================================
 
-#if (BUILDLEVEL==LEVEL1)	 
+#if (BUILDLEVEL==LEVEL1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RMP module and call the ramp control macro
 // ------------------------------------------------------------------------------
-    rc1.TargetValue = SpeedRef;		
+    rc1.TargetValue = SpeedRef;
 	RC_MACRO(rc1)
 
 // ------------------------------------------------------------------------------
@@ -551,11 +549,11 @@ interrupt void MainISR(void)
 //  Connect inputs of the INV_PARK module and call the inverse park trans. macro
 //	There are two option for trigonometric functions:
 //  IQ sin/cos look-up table provides 512 discrete sin and cos points in Q30 format
-//  IQsin/cos PU functions interpolate the data in the lookup table yielding higher resolution. 
+//  IQsin/cos PU functions interpolate the data in the lookup table yielding higher resolution.
 // ------------------------------------------------------------------------------
     ipark1.Ds = VdTesting;
     ipark1.Qs = VqTesting;
-    
+
 	//ipark1.Sine  =_IQ30toIQ(IQsinTable[_IQtoIQ9(rg1.Out)]);
     //ipark1.Cosine=_IQ30toIQ(IQcosTable[_IQtoIQ9(rg1.Out)]);
 
@@ -567,30 +565,30 @@ interrupt void MainISR(void)
 //  Connect inputs of the SVGEN_DQ module and call the space-vector gen. macro
 // ------------------------------------------------------------------------------
   	svgen1.Ualpha = ipark1.Alpha;
- 	svgen1.Ubeta = ipark1.Beta;	
+ 	svgen1.Ubeta = ipark1.Beta;
 	SVGENDQ_MACRO(svgen1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PWM_DRV module and call the PWM signal generation macro
 // ------------------------------------------------------------------------------
-    pwm1.MfuncC1 = svgen1.Ta;  
-    pwm1.MfuncC2 = svgen1.Tb;   
-    pwm1.MfuncC3 = svgen1.Tc; 
-	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values	
+    pwm1.MfuncC1 = svgen1.Ta;
+    pwm1.MfuncC2 = svgen1.Tb;
+    pwm1.MfuncC3 = svgen1.Tc;
+	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the PWMDAC module 
-// ------------------------------------------------------------------------------	
-	pwmdac1.MfuncC1 = svgen1.Ta; 
-    pwmdac1.MfuncC2 = svgen1.Tb; 
+//    Connect inputs of the PWMDAC module
+// ------------------------------------------------------------------------------
+	pwmdac1.MfuncC1 = svgen1.Ta;
+    pwmdac1.MfuncC2 = svgen1.Tb;
     PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
-    
-    pwmdac1.MfuncC1 = svgen1.Tc; 
-    pwmdac1.MfuncC2 = svgen1.Tb-svgen1.Tc; 
-	PWMDAC_MACRO(7,pwmdac1)	   
+
+    pwmdac1.MfuncC1 = svgen1.Tc;
+    pwmdac1.MfuncC2 = svgen1.Tb-svgen1.Tc;
+	PWMDAC_MACRO(7,pwmdac1)
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the DATALOG module 
+//    Connect inputs of the DATALOG module
 // ------------------------------------------------------------------------------
     DlogCh1 = _IQtoQ15(svgen1.Ta);
     DlogCh2 = _IQtoQ15(svgen1.Tb);
@@ -600,39 +598,39 @@ interrupt void MainISR(void)
 #endif // (BUILDLEVEL==LEVEL1)
 
 // =============================== LEVEL 2 ======================================
-//	  Level 2 verifies the analog-to-digital conversion, offset compensation, 
-//    clarke/park transformations (CLARKE/PARK), phase voltage calculations 
-// ============================================================================== 
+//	  Level 2 verifies the analog-to-digital conversion, offset compensation,
+//    clarke/park transformations (CLARKE/PARK), phase voltage calculations
+// ==============================================================================
 
-#if (BUILDLEVEL==LEVEL2) 
+#if (BUILDLEVEL==LEVEL2)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RMP module and call the ramp control macro
 // ------------------------------------------------------------------------------
-    rc1.TargetValue = SpeedRef;		
+    rc1.TargetValue = SpeedRef;
 	RC_MACRO(rc1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RAMP GEN module and call the ramp generator macro
 // ------------------------------------------------------------------------------
     rg1.Freq = rc1.SetpointValue;
-	RG_MACRO(rg1) 
+	RG_MACRO(rg1)
 
 // ------------------------------------------------------------------------------
-//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1). 
+//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1).
 //	Connect inputs of the CLARKE module and call the clarke transformation macro
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	clarke1.As=((AdcMirror.ADCRESULT1)*0.00024414-offsetA)*2*0.909; // Phase A curr.
 	clarke1.Bs=((AdcMirror.ADCRESULT2)*0.00024414-offsetB)*2*0.909; // Phase B curr.
-	#endif														   // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)			
-	
+	#endif														   // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)
+
 	#ifdef DSP2803x_DEVICE_H
 	clarke1.As = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT1)-offsetA); // Phase A curr.
-	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.	
-	#endif														   // (ADCmeas(q12->q24)-offset)*2	
-	
-	CLARKE_MACRO(clarke1) 
+	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.
+	#endif														   // (ADCmeas(q12->q24)-offset)*2
+
+	CLARKE_MACRO(clarke1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PARK module and call the park trans. macro
@@ -642,8 +640,8 @@ interrupt void MainISR(void)
 	park1.Angle = rg1.Out;
 	park1.Sine = _IQsinPU(park1.Angle);
 	park1.Cosine = _IQcosPU(park1.Angle);
-	PARK_MACRO(park1) 
- 
+	PARK_MACRO(park1)
+
 // ------------------------------------------------------------------------------
 //	Connect inputs of the INV_PARK module and call the inverse park trans. macro
 // ------------------------------------------------------------------------------
@@ -651,65 +649,65 @@ interrupt void MainISR(void)
     ipark1.Qs = VqTesting;
 	ipark1.Sine=park1.Sine;
     ipark1.Cosine=park1.Cosine;
-	IPARK_MACRO(ipark1) 
+	IPARK_MACRO(ipark1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the VOLT_CALC module and call the phase voltage calc. macro
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	volt1.DcBusVolt = ((AdcMirror.ADCRESULT7)*0.00024414)*0.909; // DC Bus voltage meas.
-    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)	
-    
+    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)
+
     #ifdef DSP2803x_DEVICE_H
 	volt1.DcBusVolt = _IQ12toIQ(AdcResult.ADCRESULT7);	     	 // DC Bus voltage meas.
     #endif
-    
+
     volt1.MfuncV1 = svgen1.Ta;
     volt1.MfuncV2 = svgen1.Tb;
     volt1.MfuncV3 = svgen1.Tc;
-    PHASEVOLT_MACRO(volt1) 
+    PHASEVOLT_MACRO(volt1)
 // ------------------------------------------------------------------------------
 //  Connect inputs of the SVGEN_DQ module and call the space-vector gen. macro
 // ------------------------------------------------------------------------------
   	svgen1.Ualpha = ipark1.Alpha;
  	svgen1.Ubeta = ipark1.Beta;
-  	SVGENDQ_MACRO(svgen1)	
+  	SVGENDQ_MACRO(svgen1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PWM_DRV module and call the PWM signal generation macro
 // ------------------------------------------------------------------------------
-    pwm1.MfuncC1 = svgen1.Ta;  
-    pwm1.MfuncC2 = svgen1.Tb;   
-    pwm1.MfuncC3 = svgen1.Tc; 
-	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values	
+    pwm1.MfuncC1 = svgen1.Ta;
+    pwm1.MfuncC2 = svgen1.Tb;
+    pwm1.MfuncC3 = svgen1.Tc;
+	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the PWMDAC module 
-// ------------------------------------------------------------------------------	
-	pwmdac1.MfuncC1 = svgen1.Ta; 
-    pwmdac1.MfuncC2 = rg1.Out; 
+//    Connect inputs of the PWMDAC module
+// ------------------------------------------------------------------------------
+	pwmdac1.MfuncC1 = svgen1.Ta;
+    pwmdac1.MfuncC2 = rg1.Out;
     PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
-    
-    pwmdac1.MfuncC1 = clarke1.As; 
-    pwmdac1.MfuncC2 = clarke1.Bs; 
+
+    pwmdac1.MfuncC1 = clarke1.As;
+    pwmdac1.MfuncC2 = clarke1.Bs;
 	PWMDAC_MACRO(7,pwmdac1)							// PWMDAC 7A, 7B
 
 // ------------------------------------------------------------------------------
-//  Connect inputs of the DATALOG module 
+//  Connect inputs of the DATALOG module
 // ------------------------------------------------------------------------------
     DlogCh1 = _IQtoQ15(volt1.VphaseA);
     DlogCh2 = _IQtoQ15(clarke1.As);
     DlogCh3 = _IQtoQ15(volt1.VphaseB);
-    DlogCh4 = _IQtoQ15(clarke1.Bs); 
+    DlogCh4 = _IQtoQ15(clarke1.Bs);
 
 
 #endif // (BUILDLEVEL==LEVEL2)
 
 // =============================== LEVEL 3 ======================================
-//	Level 3 verifies the dq-axis current regulation performed by PI and speed 
-//	measurement modules  
-// ==============================================================================  
-//  lsw=0: lock the rotor of the motor 
+//	Level 3 verifies the dq-axis current regulation performed by PI and speed
+//	measurement modules
+// ==============================================================================
+//  lsw=0: lock the rotor of the motor
 //  lsw=1: close the current loop
 
 
@@ -717,49 +715,49 @@ interrupt void MainISR(void)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RMP module and call the ramp control macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
     if(lsw==0)rc1.TargetValue = 0;
-    else rc1.TargetValue = SpeedRef;		
+    else rc1.TargetValue = SpeedRef;
 	RC_MACRO(rc1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RAMP GEN module and call the ramp generator macro
 // ------------------------------------------------------------------------------
     rg1.Freq = rc1.SetpointValue;
-	RG_MACRO(rg1)  
+	RG_MACRO(rg1)
 
 // ------------------------------------------------------------------------------
-//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1). 
+//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1).
 //	Connect inputs of the CLARKE module and call the clarke transformation macro
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	clarke1.As=((AdcMirror.ADCRESULT1)*0.00024414-offsetA)*2*0.909; // Phase A curr.
 	clarke1.Bs=((AdcMirror.ADCRESULT2)*0.00024414-offsetB)*2*0.909; // Phase B curr.
-	#endif							   						        // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)			
-	
+	#endif							   						        // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)
+
 	#ifdef DSP2803x_DEVICE_H
 	clarke1.As = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT1)-offsetA); // Phase A curr.
-	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.	
-	#endif														   // (ADCmeas(q12->q24)-offset)*2	
-	
-	CLARKE_MACRO(clarke1)  
+	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.
+	#endif														   // (ADCmeas(q12->q24)-offset)*2
+
+	CLARKE_MACRO(clarke1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PARK module and call the park trans. macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
 	park1.Alpha = clarke1.Alpha;
 	park1.Beta = clarke1.Beta;
 	if(lsw==0) park1.Angle = 0;
 	else if(lsw==1) park1.Angle = rg1.Out;
-	
+
 	park1.Sine = _IQsinPU(park1.Angle);
 	park1.Cosine = _IQcosPU(park1.Angle);
-	
-	PARK_MACRO(park1) 
- 
+
+	PARK_MACRO(park1)
+
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PI module and call the PI IQ controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
     if(lsw==0) pi_iq.Ref = 0;
     else if(lsw==1) pi_iq.Ref = IqRef;
 	pi_iq.Fbk = park1.Qs;
@@ -767,11 +765,11 @@ interrupt void MainISR(void)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PI module and call the PI ID controller macro
-// ------------------------------------------------------------------------------   
+// ------------------------------------------------------------------------------
 	if(lsw==0) pi_id.Ref = _IQ(0.05);
-    else pi_id.Ref = IdRef; 
+    else pi_id.Ref = IdRef;
 	pi_id.Fbk = park1.Ds;
-	PI_MACRO(pi_id) 
+	PI_MACRO(pi_id)
 
 // ------------------------------------------------------------------------------
 //	Connect inputs of the INV_PARK module and call the inverse park trans. macro
@@ -780,16 +778,16 @@ interrupt void MainISR(void)
     ipark1.Qs = pi_iq.Out ;
 	ipark1.Sine   = park1.Sine;
     ipark1.Cosine = park1.Cosine;
-	IPARK_MACRO(ipark1) 
+	IPARK_MACRO(ipark1)
 
 // ------------------------------------------------------------------------------
-//    Call the QEP calculation module 
+//    Call the QEP calculation module
 // ------------------------------------------------------------------------------
     QEP_MACRO(1,qep1);
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the SPEED_FR module and call the speed calculation macro 
-// ------------------------------------------------------------------------------ 
+//    Connect inputs of the SPEED_FR module and call the speed calculation macro
+// ------------------------------------------------------------------------------
     speed1.ElecTheta = qep1.ElecTheta;
     speed1.DirectionQep = (int32)(qep1.DirectionQep);
     SPEED_FR_MACRO(speed1)
@@ -799,45 +797,45 @@ interrupt void MainISR(void)
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	volt1.DcBusVolt = ((AdcMirror.ADCRESULT7)*0.00024414)*0.909; // DC Bus voltage meas.
-    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)	
-    
+    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)
+
     #ifdef DSP2803x_DEVICE_H
 	volt1.DcBusVolt = _IQ12toIQ(AdcResult.ADCRESULT7);	     // DC Bus voltage meas.
     #endif
-    
+
     volt1.MfuncV1 = svgen1.Ta;
     volt1.MfuncV2 = svgen1.Tb;
     volt1.MfuncV3 = svgen1.Tc;
-    PHASEVOLT_MACRO(volt1)        
+    PHASEVOLT_MACRO(volt1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the SVGEN_DQ module and call the space-vector gen. macro
 // ------------------------------------------------------------------------------
   	svgen1.Ualpha = ipark1.Alpha;
  	svgen1.Ubeta = ipark1.Beta;
-  	SVGENDQ_MACRO(svgen1)        
+  	SVGENDQ_MACRO(svgen1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PWM_DRV module and call the PWM signal generation macro
 // ------------------------------------------------------------------------------
-    pwm1.MfuncC1 = svgen1.Ta;  
-    pwm1.MfuncC2 = svgen1.Tb;   
-    pwm1.MfuncC3 = svgen1.Tc; 
-	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values	
+    pwm1.MfuncC1 = svgen1.Ta;
+    pwm1.MfuncC2 = svgen1.Tb;
+    pwm1.MfuncC3 = svgen1.Tc;
+	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the PWMDAC module 
-// ------------------------------------------------------------------------------	
-	pwmdac1.MfuncC1 = clarke1.As; 
-    pwmdac1.MfuncC2 = clarke1.Bs; 
-    PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
-    
-    pwmdac1.MfuncC1 = qep1.ElecTheta; 
-    pwmdac1.MfuncC2 = svgen1.Tb-svgen1.Tc; 
-	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B  
-    
+//    Connect inputs of the PWMDAC module
 // ------------------------------------------------------------------------------
-//    Connect inputs of the DATALOG module 
+	pwmdac1.MfuncC1 = clarke1.As;
+    pwmdac1.MfuncC2 = clarke1.Bs;
+    PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
+
+    pwmdac1.MfuncC1 = qep1.ElecTheta;
+    pwmdac1.MfuncC2 = svgen1.Tb-svgen1.Tc;
+	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B
+
+// ------------------------------------------------------------------------------
+//    Connect inputs of the DATALOG module
 // ------------------------------------------------------------------------------
     DlogCh1 = _IQtoQ15(clarke1.As );
     DlogCh2 = _IQtoQ15(clarke1.Bs);
@@ -848,59 +846,59 @@ interrupt void MainISR(void)
 
 
 // =============================== LEVEL 4 ======================================
-//	  Level 4 verifies the estimated rotor position and speed estimation 
-//	  performed by SMOPOS and SPEED_EST modules, respectively. 
-// ==============================================================================  
-//  lsw=0: lock the rotor of the motor 
+//	  Level 4 verifies the estimated rotor position and speed estimation
+//	  performed by SMOPOS and SPEED_EST modules, respectively.
+// ==============================================================================
+//  lsw=0: lock the rotor of the motor
 //  lsw=1: close the current loop
 
 #if (BUILDLEVEL==LEVEL4)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RMP module and call the ramp control macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
     if(lsw==0)rc1.TargetValue = 0;
-    else rc1.TargetValue = SpeedRef;		
+    else rc1.TargetValue = SpeedRef;
 	RC_MACRO(rc1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RAMP GEN module and call the ramp generator macro
 // ------------------------------------------------------------------------------
     rg1.Freq = rc1.SetpointValue;
-	RG_MACRO(rg1)  
+	RG_MACRO(rg1)
 
 // ------------------------------------------------------------------------------
-//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1). 
+//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1).
 //	Connect inputs of the CLARKE module and call the clarke transformation macro
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	clarke1.As=((AdcMirror.ADCRESULT1)*0.00024414-offsetA)*2*0.909; // Phase A curr.
 	clarke1.Bs=((AdcMirror.ADCRESULT2)*0.00024414-offsetB)*2*0.909; // Phase B curr.
-	#endif												 // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)			
-	
+	#endif												 // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)
+
 	#ifdef DSP2803x_DEVICE_H
 	clarke1.As = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT1)-offsetA); // Phase A curr.
-	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.	
-	#endif														   // (ADCmeas(q12->q24)-offset)*2	
-	
-	CLARKE_MACRO(clarke1)  
+	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.
+	#endif														   // (ADCmeas(q12->q24)-offset)*2
+
+	CLARKE_MACRO(clarke1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PARK module and call the park trans. macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
 	park1.Alpha = clarke1.Alpha;
 	park1.Beta = clarke1.Beta;
 	if(lsw==0) park1.Angle = 0;
 	else if(lsw==1) park1.Angle = rg1.Out;
-	
+
 	park1.Sine = _IQsinPU(park1.Angle);
 	park1.Cosine = _IQcosPU(park1.Angle);
-	
-	PARK_MACRO(park1) 
- 
+
+	PARK_MACRO(park1)
+
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PI module and call the PI IQ controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
     if(lsw==0) pi_iq.Ref = 0;
     else if(lsw==1) pi_iq.Ref = IqRef;
 	pi_iq.Fbk = park1.Qs;
@@ -908,28 +906,28 @@ interrupt void MainISR(void)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PI module and call the PI ID controller macro
-// ------------------------------------------------------------------------------   
+// ------------------------------------------------------------------------------
 	if(lsw==0) pi_id.Ref = _IQ(0.05);
-    else pi_id.Ref = 0; 
+    else pi_id.Ref = 0;
 	pi_id.Fbk = park1.Ds;
 	PI_MACRO(pi_id)
 
 // ------------------------------------------------------------------------------
 //	Connect inputs of the INV_PARK module and call the inverse park trans. macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
     ipark1.Ds = pi_id.Out;
     ipark1.Qs = pi_iq.Out;
 	ipark1.Sine=park1.Sine;
     ipark1.Cosine=park1.Cosine;
-	IPARK_MACRO(ipark1) 
+	IPARK_MACRO(ipark1)
 
 // ------------------------------------------------------------------------------
-//    Call the QEP calculation module 
+//    Call the QEP calculation module
 // ------------------------------------------------------------------------------
     QEP_MACRO(1,qep1);
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the SPEED_FR module and call the speed calculation macro 
+//    Connect inputs of the SPEED_FR module and call the speed calculation macro
 // ------------------------------------------------------------------------------
     speed1.ElecTheta = qep1.ElecTheta;
     speed1.DirectionQep = (int32)(qep1.DirectionQep);
@@ -937,15 +935,15 @@ interrupt void MainISR(void)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the VOLT_CALC module and call the phase voltage calc. macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	volt1.DcBusVolt = ((AdcMirror.ADCRESULT7)*0.00024414)*0.909; // DC Bus voltage meas.
-    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)	
-    
+    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)
+
     #ifdef DSP2803x_DEVICE_H
 	volt1.DcBusVolt = _IQ12toIQ(AdcResult.ADCRESULT7);	         // DC Bus voltage meas.
     #endif
-    
+
     volt1.MfuncV1 = svgen1.Ta;
     volt1.MfuncV2 = svgen1.Tb;
     volt1.MfuncV3 = svgen1.Tc;
@@ -964,36 +962,36 @@ interrupt void MainISR(void)
 //    Connect inputs of the SPEED_EST module and call the estimated speed macro
 // ------------------------------------------------------------------------------
     speed3.EstimatedTheta = smo1.Theta;
-	SE_MACRO(speed3) 
+	SE_MACRO(speed3)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the SVGEN_DQ module and call the space-vector gen. macro
 // ------------------------------------------------------------------------------
   	svgen1.Ualpha = ipark1.Alpha;
  	svgen1.Ubeta = ipark1.Beta;
-  	SVGENDQ_MACRO(svgen1)        
+  	SVGENDQ_MACRO(svgen1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PWM_DRV module and call the PWM signal generation macro
 // ------------------------------------------------------------------------------
-    pwm1.MfuncC1 = svgen1.Ta;  
-    pwm1.MfuncC2 = svgen1.Tb;   
-    pwm1.MfuncC3 = svgen1.Tc; 
-	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values	
+    pwm1.MfuncC1 = svgen1.Ta;
+    pwm1.MfuncC2 = svgen1.Tb;
+    pwm1.MfuncC3 = svgen1.Tc;
+	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the PWMDAC module 
-// ------------------------------------------------------------------------------	
-	pwmdac1.MfuncC1 = clarke1.As; 
-    pwmdac1.MfuncC2 = clarke1.Bs; 
-    PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
-    
-    pwmdac1.MfuncC1 = qep1.ElecTheta; 
-    pwmdac1.MfuncC2 = smo1.Theta; 
-	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B  
-    
+//    Connect inputs of the PWMDAC module
 // ------------------------------------------------------------------------------
-//    Connect inputs of the DATALOG module 
+	pwmdac1.MfuncC1 = clarke1.As;
+    pwmdac1.MfuncC2 = clarke1.Bs;
+    PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
+
+    pwmdac1.MfuncC1 = qep1.ElecTheta;
+    pwmdac1.MfuncC2 = smo1.Theta;
+	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B
+
+// ------------------------------------------------------------------------------
+//    Connect inputs of the DATALOG module
 // ------------------------------------------------------------------------------
     DlogCh1 = _IQtoQ15(clarke1.As);
     DlogCh2 = _IQtoQ15(smo1.Theta);
@@ -1005,10 +1003,10 @@ interrupt void MainISR(void)
 
 
 // =============================== LEVEL 5 ======================================
-//	  Level 5 verifies the speed regulator performed by PI module. 
+//	  Level 5 verifies the speed regulator performed by PI module.
 //	  The system speed loop is closed by using the measured speed as a feedback.
-// ==============================================================================  
-//  lsw=0: lock the rotor of the motor 
+// ==============================================================================
+//  lsw=0: lock the rotor of the motor
 //  lsw=1: close the current loop
 
 
@@ -1016,51 +1014,51 @@ interrupt void MainISR(void)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RMP module and call the ramp control macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
     if(lsw==0)rc1.TargetValue = 0;
-    else rc1.TargetValue = SpeedRef;		
+    else rc1.TargetValue = SpeedRef;
 	RC_MACRO(rc1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RAMP GEN module and call the ramp generator macro
 // ------------------------------------------------------------------------------
     rg1.Freq = rc1.SetpointValue;
-	RG_MACRO(rg1)  
+	RG_MACRO(rg1)
 
 // ------------------------------------------------------------------------------
-//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1). 
+//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1).
 //	Connect inputs of the CLARKE module and call the clarke transformation macro
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	clarke1.As=((AdcMirror.ADCRESULT1)*0.00024414-offsetA)*2*0.909; // Phase A curr.
 	clarke1.Bs=((AdcMirror.ADCRESULT2)*0.00024414-offsetB)*2*0.909; // Phase B curr.
-	#endif													        // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)			
-	
+	#endif													        // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)
+
 	#ifdef DSP2803x_DEVICE_H
 	clarke1.As = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT1)-offsetA); // Phase A curr.
-	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.	
-	#endif														   // (ADCmeas(q12->q24)-offset)*2												  
-	
-	CLARKE_MACRO(clarke1) 
+	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.
+	#endif														   // (ADCmeas(q12->q24)-offset)*2
+
+	CLARKE_MACRO(clarke1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PARK module and call the park trans. macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
 	park1.Alpha = clarke1.Alpha;
 	park1.Beta = clarke1.Beta;
-	
+
 	if(lsw==0) park1.Angle = 0;
 	else if(lsw==1) park1.Angle = rg1.Out;
 	else park1.Angle = smo1.Theta;
-	
+
 	park1.Sine = _IQsinPU(park1.Angle);
 	park1.Cosine = _IQcosPU(park1.Angle);
-	
-	PARK_MACRO(park1) 
+
+	PARK_MACRO(park1)
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the PI module and call the PI speed controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
    if (SpeedLoopCount==SpeedLoopPrescaler)
      {
       pi_spd.Ref = rc1.SetpointValue;
@@ -1068,43 +1066,43 @@ interrupt void MainISR(void)
 	  PI_MACRO(pi_spd);
       SpeedLoopCount=1;
      }
-	else SpeedLoopCount++;   
+	else SpeedLoopCount++;
 
 	if(lsw==0 || lsw==1)	{pi_spd.ui=0; pi_spd.i1=0;}
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the PI module and call the PI IQ controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
 	if(lsw==0) pi_iq.Ref = 0;
     else if(lsw==1) pi_iq.Ref = IqRef;
-    else pi_iq.Ref =  pi_spd.Out; 
+    else pi_iq.Ref =  pi_spd.Out;
 	pi_iq.Fbk = park1.Qs;
 	PI_MACRO(pi_iq)
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the PI module and call the PI ID controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
 	if(lsw==0) pi_id.Ref = _IQ(0.05);
-    else pi_id.Ref = 0; 
+    else pi_id.Ref = 0;
 	pi_id.Fbk = park1.Ds;
 	PI_MACRO(pi_id)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the INV_PARK module and call the inverse park trans. macro
-// ------------------------------------------------------------------------------   
+// ------------------------------------------------------------------------------
     ipark1.Ds = pi_id.Out;
     ipark1.Qs = pi_iq.Out;
 	ipark1.Sine=park1.Sine;
     ipark1.Cosine=park1.Cosine;
-	IPARK_MACRO(ipark1) 
+	IPARK_MACRO(ipark1)
 
 // ------------------------------------------------------------------------------
-//    Call the QEP calculation module 
+//    Call the QEP calculation module
 // ------------------------------------------------------------------------------
     QEP_MACRO(1,qep1);
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the SPEED_FR module and call the speed calculation macro 
+//    Connect inputs of the SPEED_FR module and call the speed calculation macro
 // ------------------------------------------------------------------------------
     speed1.ElecTheta = qep1.ElecTheta;
     speed1.DirectionQep = (int32)(qep1.DirectionQep);
@@ -1115,16 +1113,16 @@ interrupt void MainISR(void)
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	volt1.DcBusVolt = ((AdcMirror.ADCRESULT7)*0.00024414)*0.909; // DC Bus voltage meas.
-    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)	
-    
+    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)
+
     #ifdef DSP2803x_DEVICE_H
 	volt1.DcBusVolt = _IQ12toIQ(AdcResult.ADCRESULT7);	         // DC Bus voltage meas.
     #endif
-    
+
     volt1.MfuncV1 = svgen1.Ta;
     volt1.MfuncV2 = svgen1.Tb;
     volt1.MfuncV3 = svgen1.Tc;
-    PHASEVOLT_MACRO(volt1)  
+    PHASEVOLT_MACRO(volt1)
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the SMO_POS module and call the sliding-mode observer macro
@@ -1139,101 +1137,101 @@ interrupt void MainISR(void)
 //    Connect inputs of the SPEED_EST module and call the estimated speed macro
 // ------------------------------------------------------------------------------
     speed3.EstimatedTheta = smo1.Theta;
-	SE_MACRO(speed3)  
+	SE_MACRO(speed3)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the SVGEN_DQ module and call the space-vector gen. macro
 // ------------------------------------------------------------------------------
   	svgen1.Ualpha = ipark1.Alpha;
  	svgen1.Ubeta = ipark1.Beta;
-  	SVGENDQ_MACRO(svgen1)        
+  	SVGENDQ_MACRO(svgen1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PWM_DRV module and call the PWM signal generation macro
 // ------------------------------------------------------------------------------
-    pwm1.MfuncC1 = svgen1.Ta;  
-    pwm1.MfuncC2 = svgen1.Tb;   
-    pwm1.MfuncC3 = svgen1.Tc; 
-	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values	
+    pwm1.MfuncC1 = svgen1.Ta;
+    pwm1.MfuncC2 = svgen1.Tb;
+    pwm1.MfuncC3 = svgen1.Tc;
+	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the PWMDAC module 
-// ------------------------------------------------------------------------------	
-	pwmdac1.MfuncC1 = clarke1.As; 
-    pwmdac1.MfuncC2 = clarke1.Bs; 
+//    Connect inputs of the PWMDAC module
+// ------------------------------------------------------------------------------
+	pwmdac1.MfuncC1 = clarke1.As;
+    pwmdac1.MfuncC2 = clarke1.Bs;
     PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
-    
-    pwmdac1.MfuncC1 = qep1.ElecTheta; 
-    pwmdac1.MfuncC2 = smo1.Theta; 
-	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B  
+
+    pwmdac1.MfuncC1 = qep1.ElecTheta;
+    pwmdac1.MfuncC2 = smo1.Theta;
+	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the DATALOG module 
+//    Connect inputs of the DATALOG module
 // ------------------------------------------------------------------------------
     DlogCh1 = _IQtoQ15(clarke1.As);
     DlogCh2 = _IQtoQ15(smo1.Theta);
     DlogCh3 = _IQtoQ15(qep1.ElecTheta);
     DlogCh4 = _IQtoQ15(rg1.Out);
 
-#endif // (BUILDLEVEL==LEVEL5) 
+#endif // (BUILDLEVEL==LEVEL5)
 
 // =============================== LEVEL 6 ======================================
-//	  Level 6 verifies the speed regulator performed by PI module. 
+//	  Level 6 verifies the speed regulator performed by PI module.
 //	  The system speed loop is closed by using the estimated speed as a feedback.
-// ==============================================================================  
+// ==============================================================================
 //  lsw=0: lock the rotor of the motor
-//  lsw=1: close the current loop 
+//  lsw=1: close the current loop
 //  lsw=2: close the speed loop
 
 #if (BUILDLEVEL==LEVEL6)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RMP module and call the ramp control macro
-// ------------------------------------------------------------------------------ 
+// ------------------------------------------------------------------------------
     if(lsw==0)rc1.TargetValue = 0;
-    else rc1.TargetValue = SpeedRef;		
+    else rc1.TargetValue = SpeedRef;
 	RC_MACRO(rc1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the RAMP GEN module and call the ramp generator macro
 // ------------------------------------------------------------------------------
     rg1.Freq = rc1.SetpointValue;
-	RG_MACRO(rg1)  
+	RG_MACRO(rg1)
 
 // ------------------------------------------------------------------------------
-//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1). 
+//  Measure phase currents, subtract the offset and normalize from (-0.5,+0.5) to (-1,+1).
 //	Connect inputs of the CLARKE module and call the clarke transformation macro
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	clarke1.As=((AdcMirror.ADCRESULT1)*0.00024414-offsetA)*2*0.909; // Phase A curr.
 	clarke1.Bs=((AdcMirror.ADCRESULT2)*0.00024414-offsetB)*2*0.909; // Phase B curr.
-	#endif													        // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)			
-	
+	#endif													        // ((ADCmeas(q12)/2^12)-offset)*2*(3.0/3.3)
+
 	#ifdef DSP2803x_DEVICE_H
 	clarke1.As = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT1)-offsetA); // Phase A curr.
-	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.	
-	#endif														   // (ADCmeas(q12->q24)-offset)*2												  
-	
-	CLARKE_MACRO(clarke1)    
-  
+	clarke1.Bs = _IQmpy2(_IQ12toIQ(AdcResult.ADCRESULT2)-offsetB); // Phase B curr.
+	#endif														   // (ADCmeas(q12->q24)-offset)*2
+
+	CLARKE_MACRO(clarke1)
+
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PARK module and call the park trans. macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
 	park1.Alpha = clarke1.Alpha;
 	park1.Beta = clarke1.Beta;
-	
+
 	if(lsw==0) park1.Angle = 0;
 	else if(lsw==1) park1.Angle = rg1.Out;
 	else park1.Angle = smo1.Theta;
-	
+
 	park1.Sine = _IQsinPU(park1.Angle);
 	park1.Cosine = _IQcosPU(park1.Angle);
-	
-	PARK_MACRO(park1) 
+
+	PARK_MACRO(park1)
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the PI module and call the PI speed controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
    if (SpeedLoopCount==SpeedLoopPrescaler)
      {
       pi_spd.Ref = rc1.SetpointValue;
@@ -1241,43 +1239,43 @@ interrupt void MainISR(void)
 	  PI_MACRO(pi_spd);
       SpeedLoopCount=1;
      }
-	else SpeedLoopCount++;   
+	else SpeedLoopCount++;
 
 	if(lsw==0 || lsw==1)	{pi_spd.ui=0; pi_spd.i1=0;}
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the PI module and call the PI IQ controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
 	if(lsw==0) pi_iq.Ref = 0;
     else if(lsw==1) pi_iq.Ref = IqRef;
-    else pi_iq.Ref =  pi_spd.Out; 
+    else pi_iq.Ref =  pi_spd.Out;
 	pi_iq.Fbk = park1.Qs;
 	PI_MACRO(pi_iq)
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the PI module and call the PI ID controller macro
-// ------------------------------------------------------------------------------  
+// ------------------------------------------------------------------------------
 	if(lsw==0) pi_id.Ref = _IQ(0.05);
-    else pi_id.Ref = 0; 
+    else pi_id.Ref = 0;
 	pi_id.Fbk = park1.Ds;
 	PI_MACRO(pi_id)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the INV_PARK module and call the inverse park trans. macro
-// ------------------------------------------------------------------------------   
+// ------------------------------------------------------------------------------
     ipark1.Ds = pi_id.Out;
     ipark1.Qs = pi_iq.Out;
 	ipark1.Sine=park1.Sine;
     ipark1.Cosine=park1.Cosine;
-	IPARK_MACRO(ipark1) 
+	IPARK_MACRO(ipark1)
 
 // ------------------------------------------------------------------------------
-//    Call the QEP calculation module 
+//    Call the QEP calculation module
 // ------------------------------------------------------------------------------
     QEP_MACRO(1,qep1);
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the SPEED_FR module and call the speed calculation macro 
+//    Connect inputs of the SPEED_FR module and call the speed calculation macro
 // ------------------------------------------------------------------------------
     speed1.ElecTheta = qep1.ElecTheta;
     speed1.DirectionQep = (int32)(qep1.DirectionQep);
@@ -1288,12 +1286,12 @@ interrupt void MainISR(void)
 // ------------------------------------------------------------------------------
 	#ifdef DSP2833x_DEVICE_H
 	volt1.DcBusVolt = ((AdcMirror.ADCRESULT7)*0.00024414)*0.909; // DC Bus voltage meas.
-    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)	
-    
+    #endif														 // (ADCmeas(q12)/2^12)*(3.0V/3.3V)
+
     #ifdef DSP2803x_DEVICE_H
 	volt1.DcBusVolt = _IQ12toIQ(AdcResult.ADCRESULT7);	         // DC Bus voltage meas.
     #endif
-    
+
     volt1.MfuncV1 = svgen1.Ta;
     volt1.MfuncV2 = svgen1.Tb;
     volt1.MfuncV3 = svgen1.Tc;
@@ -1302,57 +1300,57 @@ interrupt void MainISR(void)
 // ------------------------------------------------------------------------------
 //    Connect inputs of the SMO_POS module and call the sliding-mode observer macro
 // ------------------------------------------------------------------------------
- 	if (lsw==2 && smo1.Kslide<_IQ(0.25)) smo1.Kslide=smo1.Kslide+_IQ(0.00001); 
+ 	if (lsw==2 && smo1.Kslide<_IQ(0.25)) smo1.Kslide=smo1.Kslide+_IQ(0.00001);
  	// Increase Kslide for better torque response after closing the speed loop
-	// Low Kslide responds better to loop transients 
- 	
+	// Low Kslide responds better to loop transients
+
  	smo1.Ialpha = clarke1.Alpha;
   	smo1.Ibeta  = clarke1.Beta;
     smo1.Valpha = volt1.Valpha;
     smo1.Vbeta  = volt1.Vbeta;
-	SMO_MACRO(smo1)	
+	SMO_MACRO(smo1)
 
 // ------------------------------------------------------------------------------
 //    Connect inputs of the SPEED_EST module and call the estimated speed macro
 // ------------------------------------------------------------------------------
     speed3.EstimatedTheta = smo1.Theta;
-	SE_MACRO(speed3)  
+	SE_MACRO(speed3)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the SVGEN_DQ module and call the space-vector gen. macro
 // ------------------------------------------------------------------------------
   	svgen1.Ualpha = ipark1.Alpha;
  	svgen1.Ubeta = ipark1.Beta;
-  	SVGENDQ_MACRO(svgen1)        
+  	SVGENDQ_MACRO(svgen1)
 
 // ------------------------------------------------------------------------------
 //  Connect inputs of the PWM_DRV module and call the PWM signal generation macro
 // ------------------------------------------------------------------------------
-    pwm1.MfuncC1 = svgen1.Ta;  
-    pwm1.MfuncC2 = svgen1.Tb;   
-    pwm1.MfuncC3 = svgen1.Tc; 
-	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values	
+    pwm1.MfuncC1 = svgen1.Ta;
+    pwm1.MfuncC2 = svgen1.Tb;
+    pwm1.MfuncC3 = svgen1.Tc;
+	PWM_MACRO(1,2,3,pwm1)							// Calculate the new PWM compare values
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the PWMDAC module 
-// ------------------------------------------------------------------------------	
-	pwmdac1.MfuncC1 = clarke1.As; 
-    pwmdac1.MfuncC2 = clarke1.Bs; 
+//    Connect inputs of the PWMDAC module
+// ------------------------------------------------------------------------------
+	pwmdac1.MfuncC1 = clarke1.As;
+    pwmdac1.MfuncC2 = clarke1.Bs;
     PWMDAC_MACRO(6,pwmdac1)	  						// PWMDAC 6A, 6B
-    
-    pwmdac1.MfuncC1 = qep1.ElecTheta; 
-    pwmdac1.MfuncC2 = smo1.Theta; 
-	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B  
+
+    pwmdac1.MfuncC1 = qep1.ElecTheta;
+    pwmdac1.MfuncC2 = smo1.Theta;
+	PWMDAC_MACRO(7,pwmdac1)		  					// PWMDAC 7A, 7B
 
 // ------------------------------------------------------------------------------
-//    Connect inputs of the DATALOG module 
+//    Connect inputs of the DATALOG module
 // ------------------------------------------------------------------------------
     DlogCh1 = _IQtoQ15(clarke1.As);
     DlogCh2 = _IQtoQ15(smo1.Theta);
     DlogCh3 = _IQtoQ15(volt1.Vbeta);
     DlogCh4 = _IQtoQ15(volt1.Valpha);
 
-#endif // (BUILDLEVEL==LEVEL6) 
+#endif // (BUILDLEVEL==LEVEL6)
 
 
 // ------------------------------------------------------------------------------
@@ -1371,25 +1369,25 @@ interrupt void MainISR(void)
 
 
 /**********************************************************/
-/********************Offset Compensation*******************/  
+/********************Offset Compensation*******************/
 /**********************************************************/
 
 interrupt void OffsetISR(void)
 {
 // Verifying the ISR
     IsrTicker++;
-    
-// DC offset measurement for ADC 
+
+// DC offset measurement for ADC
 
     if (IsrTicker>=5000)
-    	{	
-    		
+    	{
+
     		#ifdef DSP2833x_DEVICE_H
     		offsetA= K1*offsetA + K2*(AdcMirror.ADCRESULT1)*0.00024414; 			//Phase A offset
     		offsetB= K1*offsetB + K2*(AdcMirror.ADCRESULT2)*0.00024414; 			//Phase B offset
     		offsetC= K1*offsetC + K2*(AdcMirror.ADCRESULT3)*0.00024414; ;			//Phase C offset
     		#endif
-    		
+
     		#ifdef DSP2803x_DEVICE_H
     		offsetA= _IQmpy(K1,offsetA)+_IQmpy(K2,_IQ12toIQ(AdcResult.ADCRESULT1)); 		//Phase A offset
     		offsetB= _IQmpy(K1,offsetB)+_IQmpy(K2,_IQ12toIQ(AdcResult.ADCRESULT2));			//Phase B offset
@@ -1400,10 +1398,10 @@ interrupt void OffsetISR(void)
 	if (IsrTicker > 20000)
 	{
 		EALLOW;
-		PieVectTable.EPWM1_INT = &MainISR;		
+		PieVectTable.EPWM1_INT = &MainISR;
 		EDIS;
 	}
-    
+
 
 // Enable more interrupts from this timer
 	EPwm1Regs.ETCLR.bit.INT = 1;
@@ -1417,53 +1415,53 @@ interrupt void OffsetISR(void)
 
 
 /**********************************************************/
-/***************Protection Configuration*******************/  
+/***************Protection Configuration*******************/
 /**********************************************************/
 
 void HVDMC_Protection(void)
 {
- 
+
       EALLOW;
-      
+
 // Configure Trip Mechanism for the Motor control software
 // -Cycle by cycle trip on CPU halt
-// -One shot IPM trip zone trip 
+// -One shot IPM trip zone trip
 // These trips need to be repeated for EPWM1 ,2 & 3
 
 //===========================================================================
 //Motor Control Trip Config, EPwm1,2,3
 //===========================================================================
-    
-// CPU Halt Trip  
+
+// CPU Halt Trip
       EPwm1Regs.TZSEL.bit.CBC6=0x1;
       EPwm2Regs.TZSEL.bit.CBC6=0x1;
       EPwm3Regs.TZSEL.bit.CBC6=0x1;
 
       EPwm1Regs.TZSEL.bit.OSHT1   = 1;  //enable TZ1 for OSHT
-      EPwm2Regs.TZSEL.bit.OSHT1   = 1;  //enable TZ1 for OSHT     
+      EPwm2Regs.TZSEL.bit.OSHT1   = 1;  //enable TZ1 for OSHT
       EPwm3Regs.TZSEL.bit.OSHT1   = 1;  //enable TZ1 for OSHT
 
 // What do we want the OST/CBC events to do?
 // TZA events can force EPWMxA
 // TZB events can force EPWMxB
 
-      EPwm1Regs.TZCTL.bit.TZA = TZ_FORCE_LO; // EPWMxA will go low 
+      EPwm1Regs.TZCTL.bit.TZA = TZ_FORCE_LO; // EPWMxA will go low
       EPwm1Regs.TZCTL.bit.TZB = TZ_FORCE_LO; // EPWMxB will go low
-      
-      EPwm2Regs.TZCTL.bit.TZA = TZ_FORCE_LO; // EPWMxA will go low 
+
+      EPwm2Regs.TZCTL.bit.TZA = TZ_FORCE_LO; // EPWMxA will go low
       EPwm2Regs.TZCTL.bit.TZB = TZ_FORCE_LO; // EPWMxB will go low
-      
-      EPwm3Regs.TZCTL.bit.TZA = TZ_FORCE_LO; // EPWMxA will go low 
+
+      EPwm3Regs.TZCTL.bit.TZA = TZ_FORCE_LO; // EPWMxA will go low
       EPwm3Regs.TZCTL.bit.TZB = TZ_FORCE_LO; // EPWMxB will go low
-      
-      
+
+
       EDIS;
 
      // Clear any spurious OV trip
       EPwm1Regs.TZCLR.bit.OST = 1;
       EPwm2Regs.TZCLR.bit.OST = 1;
-      EPwm3Regs.TZCLR.bit.OST = 1;  
-      
+      EPwm3Regs.TZCLR.bit.OST = 1;
+
 //************************** End of Prot. Conf. ***************************//
 }
 

@@ -39,7 +39,7 @@ Initialization constant for the F2803X Action Qualifier Output A Register.
 Initialization constant for the F2803X Dead-Band Generator registers for PWM Generation. 
 Sets up the dead band for PWM and sets up dead band values.
 ----------------------------------------------------------------------------*/
-#define DBCTL_INIT_STATE  (BP_ENABLE + POLSEL_ACTIVE_HI_CMP)
+#define DBCTL_INIT_STATE  (BP_ENABLE + POLSEL_ACTIVE_LO_CMP)
 
 #define DBCNT_INIT_STATE   100   // 100 counts = 1.66 usec (delay) * 100 count/usec (for TBCLK = SYSCLK/1)
 
@@ -81,7 +81,107 @@ typedef struct {
 	PWM Init & PWM Update Macro Definitions
 ------------------------------------------------------------------------------*/
 
- 
+#if 1
+#define PWM_INIT_MACRO(ch1,ch2,ch3,v)										\
+	     /* Setup Sync*/													\
+         (*ePWM[ch1]).TBCTL.bit.SYNCOSEL = TB_CTR_ZERO;       /* Pass through*/		\
+		 (*ePWM[ch2]).TBCTL.bit.SYNCOSEL = TB_SYNC_IN;       /* Pass through*/		\
+		 (*ePWM[ch3]).TBCTL.bit.SYNCOSEL = TB_SYNC_DISABLE;       /* Pass through*/		\
+		 																	\
+         /* Allow each timer to be sync'ed*/								\
+         (*ePWM[ch1]).TBCTL.bit.PHSEN = TB_DISABLE;									\
+         (*ePWM[ch2]).TBCTL.bit.PHSEN = TB_ENABLE;									\
+         (*ePWM[ch3]).TBCTL.bit.PHSEN = TB_ENABLE;									\
+         																	\
+         /* Init Timer-Base Period Register for EPWM1-EPWM3*/				\
+         (*ePWM[ch1]).TBPRD = v.PeriodMax;									\
+         (*ePWM[ch2]).TBPRD = v.PeriodMax;									\
+         (*ePWM[ch3]).TBPRD = v.PeriodMax;									\
+																			\
+         /* Init Timer-Base Phase Register for EPWM1-EPWM3*/				\
+         (*ePWM[ch1]).TBPHS.half.TBPHS = 0;									\
+         (*ePWM[ch2]).TBPHS.half.TBPHS = 0;									\
+         (*ePWM[ch3]).TBPHS.half.TBPHS = 0;									\
+																			\
+         /* Init Timer-Base Control Register for EPWM1-EPWM3*/				\
+         (*ePWM[ch1]).TBCTL.all = 0xE012;							\
+		 (*ePWM[ch2]).TBCTL.all = 0xE006;							\
+		 (*ePWM[ch3]).TBCTL.all = 0xE036;							\
+																			\
+         /* Init Compare Control Register for EPWM1-EPWM3*/					\
+         (*ePWM[ch1]).CMPCTL.all = CMPCTL_INIT_STATE;						\
+         (*ePWM[ch2]).CMPCTL.all = CMPCTL_INIT_STATE;						\
+         (*ePWM[ch3]).CMPCTL.all = CMPCTL_INIT_STATE;						\
+																			\
+         /* Init Action Qualifier Output A Register for EPWM1-EPWM3*/		\
+         (*ePWM[ch1]).AQCTLA.all = AQCTLA_INIT_STATE;						\
+         (*ePWM[ch2]).AQCTLA.all = AQCTLA_INIT_STATE;						\
+         (*ePWM[ch3]).AQCTLA.all = AQCTLA_INIT_STATE;						\
+																			\
+         /* Init Dead-Band Generator Control Register for EPWM1-EPWM3*/		\
+         (*ePWM[ch1]).DBCTL.all = DBCTL_INIT_STATE;							\
+         (*ePWM[ch2]).DBCTL.all = DBCTL_INIT_STATE;							\
+         (*ePWM[ch3]).DBCTL.all = DBCTL_INIT_STATE;							\
+																			\
+         /* Init Dead-Band Generator for EPWM1-EPWM3*/						\
+         (*ePWM[ch1]).DBFED = v.Deadband;									\
+         (*ePWM[ch1]).DBRED = v.Deadband;									\
+         (*ePWM[ch2]).DBFED = v.Deadband;									\
+         (*ePWM[ch2]).DBRED = v.Deadband;									\
+         (*ePWM[ch3]).DBFED = v.Deadband;									\
+         (*ePWM[ch3]).DBRED = v.Deadband;									\
+																			\
+         /* Init PWM Chopper Control Register for EPWM1-EPWM3*/				\
+         (*ePWM[ch1]).PCCTL.all = PCCTL_INIT_STATE;							\
+         (*ePWM[ch2]).PCCTL.all = PCCTL_INIT_STATE;							\
+         (*ePWM[ch3]).PCCTL.all = PCCTL_INIT_STATE;							\
+          																	\
+         EALLOW;                       /* Enable EALLOW */					\
+																			\
+         /* Init Trip Zone Select Register*/								\
+         (*ePWM[ch1]).TZSEL.all = TZSEL_INIT_STATE;							\
+         (*ePWM[ch2]).TZSEL.all = TZSEL_INIT_STATE;							\
+         (*ePWM[ch3]).TZSEL.all = TZSEL_INIT_STATE;							\
+																			\
+         EDIS;                         /* Disable EALLOW*/			        \
+/* TZ刹车模块   */															    \
+         /* Init Trip Zone Select Register*/								\
+        /* (*ePWM[ch1]).TZSEL.all = TZSEL_INIT_STATE;	*/				    \
+         (*ePWM[ch1]).TZCLR.bit.INT = 1;							        \
+         (*ePWM[ch1]).TZCLR.bit.CBC = 1;							        \
+         (*ePWM[ch1]).TZCLR.bit.OST = 1;							        \
+         (*ePWM[ch1]).TZSEL.bit.CBC2 = TZ_ENABLE;  /* TZ2 CBC2 */		    \
+         (*ePWM[ch1]).TZSEL.bit.OSHT1 = TZ_ENABLE; /* TZ1 OHS1 */			\
+         (*ePWM[ch1]).TZCTL.bit.TZA = TZ_FORCE_HI;		                    \
+         (*ePWM[ch1]).TZCTL.bit.TZB = TZ_FORCE_HI;		                    \
+         (*ePWM[ch1]).TZEINT.bit.CBC = 0; 		                            \
+         (*ePWM[ch1]).TZEINT.bit.OST = 1;   /*使能TZ1 OHS1中断*/		        \
+                                                                            \
+        /* (*ePWM[ch2]).TZSEL.all = TZSEL_INIT_STATE;		*/			    \
+         (*ePWM[ch2]).TZCLR.bit.INT = 1;							        \
+         (*ePWM[ch2]).TZCLR.bit.CBC = 1;							        \
+         (*ePWM[ch2]).TZCLR.bit.OST = 1;							        \
+         (*ePWM[ch2]).TZSEL.bit.CBC2 = TZ_ENABLE;  /* TZ2 CBC2 */		    \
+         (*ePWM[ch2]).TZSEL.bit.OSHT1 = TZ_ENABLE; /* TZ1 OHS1 */			\
+         (*ePWM[ch2]).TZCTL.bit.TZA = TZ_FORCE_HI;		                    \
+         (*ePWM[ch2]).TZCTL.bit.TZB = TZ_FORCE_HI;		                    \
+         (*ePWM[ch2]).TZEINT.bit.CBC = 0; 		                            \
+         (*ePWM[ch2]).TZEINT.bit.OST = 1;   /*使能TZ1 OHS1中断*/		        \
+                                                                            \
+        /* (*ePWM[ch3]).TZSEL.all = TZSEL_INIT_STATE;	*/				    \
+         (*ePWM[ch3]).TZCLR.bit.INT = 1;							        \
+         (*ePWM[ch3]).TZCLR.bit.CBC = 1;							        \
+         (*ePWM[ch3]).TZCLR.bit.OST = 1;							        \
+         (*ePWM[ch3]).TZSEL.bit.CBC2 = TZ_ENABLE;  /* TZ2 CBC2 */		    \
+         (*ePWM[ch3]).TZSEL.bit.OSHT1 = TZ_ENABLE; /* TZ1 OHS1 */			\
+         (*ePWM[ch3]).TZCTL.bit.TZA = TZ_FORCE_HI;		                    \
+         (*ePWM[ch3]).TZCTL.bit.TZB = TZ_FORCE_HI;		                    \
+         (*ePWM[ch3]).TZEINT.bit.CBC = 0; 		                            \
+         (*ePWM[ch3]).TZEINT.bit.OST = 1;   /*使能TZ1 OHS1中断*/		        \
+																			\
+         EDIS;                         /* Disable EALLOW*/                  \
+
+#else
 
 #define PWM_INIT_MACRO(ch1,ch2,ch3,v)										\
 	     /* Setup Sync*/													\
@@ -146,7 +246,7 @@ typedef struct {
 																			\
          EDIS;                         /* Disable EALLOW*/			
 
-
+#endif
 
 #define PWM_MACRO(ch1,ch2,ch3,m)													\
 																					\

@@ -71,7 +71,7 @@ void DeviceInit(void)
 // 0x3 =  15	MHz		(3)
 // 0x2 =  10	MHz		(2)
 
-	PLLset(0xC);	// choose from options above
+	PLLset(6);	// choose from options above
 
 // Initialise interrupt controller and Vector Table
 // to defaults for now. Application ISR mapping done later.
